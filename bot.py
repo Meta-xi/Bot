@@ -9,6 +9,10 @@ AdminID = '1425847313'
 AdminID2 = '6379656679'
 apiurl = 'https://meta-api-production-3abd.up.railway.app/api/Wallet/UpdateBalance'
 ApiUrlToWithdraw = 'https://meta-api-production-3abd.up.railway.app/api/Wallet/WithdrawBalance'
+ApiurlGetBalance = 'https://meta-api-production-3abd.up.railway.app/api/Wallet/GetBalance/'
+ApiUrlGetVr ='https://meta-api-production-3abd.up.railway.app/api/UserPlans/GetVrsToUser/'
+ApiUrlPostVr = 'https://meta-api-production-3abd.up.railway.app/api/UserPlans/AdminPlanToUser'   
+ApiUrlDeleteVr = 'https://meta-api-production-3abd.up.railway.app/api/UserPlans/DeleteUserPlans'
 bot = telebot.TeleBot(Token)
 data_storage = {}
 directory = os.path.abspath('./imagenes')
@@ -20,6 +24,7 @@ if not os.path.exists(directory):
 
 @bot.message_handler(commands=['actualizarsaldo'])
 def iniciarActualizarSaldo(message):
+    print(f"Comando recibido de: {message.from_user.id}") 
     if str(message.from_user.id) == AdminID or str(message.from_user.id) == AdminID2:
         bot.reply_to(message, "Por favor, envía el usuario que desea actualizar su saldo (# de teléfono o correo).")
         bot.register_next_step_handler(message, recibirusuario)
@@ -175,6 +180,122 @@ def EnviarDatosARetirar(message):
             bot.reply_to(message , response_data.get('message' , 'Error al retirar el saldo'))
     except requests.exceptions.RequestException as e:
         bot.reply_to(message , "Error al retirar el saldo")
+@bot.message_handler(commands=['obtenerbalance'])
+def IniciarProcesoObtenerBalance(message):
+    if str(message.from_user.id)== AdminID or str(message.from_user.id) == AdminID2:
+        bot.reply_to(message, "Por favor, envía el usuario que desea obtener su balance (# de teléfono o correo).")
+        bot.register_next_step_handler(message, RecibirUsuarioObtenerBalance)
+    else:
+        bot.reply_to(message, "Usted no es el administrador del bot, no puedes usar este comando.")
+        
+def RecibirUsuarioObtenerBalance(message):
+    data_storage['user_identifier'] = message.text.strip()
+    bot.reply_to(message, "Espere un momento...")
+    RecibirBalance(message)
+def RecibirBalance(message):
+    try:
+        response = requests.get(ApiurlGetBalance+data_storage['user_identifier'])
+        if response.status_code == 200:
+            balance = response.json();
+            bot.reply_to(message , f"El saldo de ese usuario es {balance}")
+        else:
+            response_data = response.json()
+            bot.reply_to(message , response_data.get('message' , 'Error al obtener el saldo'))
+    except requests.exceptions.RequestException as e:
+        bot.reply_to(message , "Error al obtener el saldo")
+@bot.message_handler(commands=['obtenergafasvr'])
+def IniciarProcesoObtenerGafaVR(message):
+    if str(message.from_user.id)== AdminID or str(message.from_user.id) == AdminID2:
+        bot.reply_to(message, "Por favor, envía el usuario que desea obtener su balance (# de teléfono o correo).")
+        bot.register_next_step_handler(message, RecibirUsuarioObtenerGafaVR)
+    else:
+        bot.reply_to(message, "Usted no es el administrador del bot, no puedes usar este comando.")
+        
+def RecibirUsuarioObtenerGafaVR(message):
+    data_storage['user_identifier'] = message.text.strip()
+    bot.reply_to(message, "Espere un momento...")
+    RecibirGafaVR(message)
+def RecibirGafaVR(message):
+    try:
+        response = requests.get(ApiUrlGetVr+data_storage['user_identifier'])
+        if response.status_code == 200:
+            gafas = response.json()
+            bot.reply_to(message , f"Los gafas de ese usuario son {gafas}")
+        else:
+            response_data = response.json()
+            bot.reply_to(message , response_data.get('message' , 'Error al obtener los gafas'))
+    except requests.exceptions.RequestException as e:
+        bot.reply_to(message , "Error al obtener los gafas")
+@bot.message_handler(commands=['comprargafavr'])
+def IniciarProcesoComprarGafaVR(message):
+    if str(message.from_user.id)== AdminID or str(message.from_user.id) == AdminID2:
+        bot.reply_to(message, "Por favor, envía el usuario que desea comprar gafas (# de teléfono o correo).")
+        bot.register_next_step_handler(message, RecibirUsuarioComprarGafaVR)
+    else:
+        bot.reply_to(message, "Usted no es el administrador del bot, no puedes usar este comando.")
+        
+def RecibirUsuarioComprarGafaVR(message):
+    data_storage['user_identifier'] = message.text.strip()
+    bot.reply_to(message, "Ahora envie el id de la Vr ,por ejemplo 1 es Vr1 ,2 es vr2 etc")
+    bot.register_next_step_handler(message, RecibirIdVrComprarGafaVR)
+def RecibirIdVrComprarGafaVR(message):
+    id = int(message.text)
+    data_storage['id'] = id
+    bot.reply_to(message, "Enviando datos a la API...")
+    EnviarDatosAComprarGafaVR(message)
+def EnviarDatosAComprarGafaVR(message):
+    payload = {
+        'username': data_storage['user_identifier'],
+        'vr': data_storage['id']
+    }
+    try:
+        response = requests.post(ApiUrlPostVr , json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            bot.reply_to(message , data.get('message' , 'Gafa comprada con éxito'))
+        else:
+            response_data = response.json()
+            bot.reply_to(message , response_data.get('message' , 'Error al comprar la gafa'))
+    except requests.exceptions.RequestException as e:
+        bot.reply_to(message , "Error al comprar la gafa")
+@bot.message_handler(commands=['borrargafavr'])	
+def IniciarProcesoBorrarGafaVR(message):
+    if str(message.from_user.id)== AdminID or str(message.from_user.id) == AdminID2:
+        bot.reply_to(message, "Por favor, envía el usuario que desea borrar su balance (# de teléfono o correo).")
+        bot.register_next_step_handler(message, RecibirUsuarioBorrarGafaVR)
+    else:
+        bot.reply_to(message, "Usted no es el administrador del bot, no puedes usar este comando.")
+        
+def RecibirUsuarioBorrarGafaVR(message):
+    data_storage['user_identifier'] = message.text.strip()
+    bot.reply_to(message, "Ahora envie el id de la Vr ,por ejemplo 1 es Vr1 ,2 es vr2 etc")
+    bot.register_next_step_handler(message, RecibirIdVrBorrarGafaVR)
+def RecibirIdVrBorrarGafaVR(message):
+    id = int(message.text)
+    data_storage['id'] = id
+    bot.reply_to(message, "Por favor ingrese la cantidad de gafas que desea borrar")
+    bot.register_next_step_handler(message, RecibirCantidadBorrarGafaVR)
+def RecibirCantidadBorrarGafaVR(message):
+    cantidad = int(message.text)
+    data_storage['cantidad'] = cantidad
+    bot.reply_to(message, "Enviando datos a la API...")
+    EnviarDatosABorrarGafaVR(message)
+def EnviarDatosABorrarGafaVR(message):
+    payload = {
+        'username': data_storage['user_identifier'],
+        'vr': data_storage['id'],
+        'quantity': data_storage['cantidad']
+    }
+    try:
+        response = requests.delete(ApiUrlDeleteVr , json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            bot.reply_to(message , data.get('message' , 'Gafa borrada con éxito'))
+        else:
+            response_data = response.json()
+            bot.reply_to(message , response_data.get('message' , 'Error al borrar la gafa'))
+    except requests.exceptions.RequestException as e:
+        bot.reply_to(message , "Error al borrar la gafa")
 try:
     print("Bot está escuchando...")  # Mensaje de depuración
     bot.polling(none_stop=True, interval=0)  # Usando long polling
